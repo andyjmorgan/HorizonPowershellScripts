@@ -1,0 +1,1 @@
+This is a little repository for a number of powershell scripts i've written for customers over the years
