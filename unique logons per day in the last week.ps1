@@ -1,4 +1,4 @@
-﻿# this script demo's how to access and filter the events from horizon
+﻿# this script demo's how to get a unique user logon count per day from the eventdb
 
 import-module vmware.powercli
 
