@@ -78,11 +78,19 @@ function Get-ViewAPIService {
   return $null
 }
 
-$serveraddress = "pod1hcon1.lab.local"
-$creds = Get-Credential
-$serverAddress = $serverAddress # Connection Server address
-$hvServer = Connect-HVServer -Server $serverAddress -Credential $creds
-$logevents = Get-EventSummaryView $hvserver -days 30
+$logevents = @()
+$serveraddress = @("pod1hcon1.lab.local","pod2hcon1.lab.local")
+$creds = Get-Credential -Message "Please enter valid crendentials to connect to the Horizon Connection servers"
+foreach($server in $serveraddress){
+    Write-host "Connecting to $server"
+    $hvServer = Connect-HVServer -Server $server -Credential $creds
+    $events = Get-EventSummaryView $hvserver -days 30
+    Write-host "Retrieved $($events.count) events"
+    $logevents += $events
+    Disconnect-HVServer -Server $hvServer -Confirm:$false
+}
+
+
 $logevents | ?{$_.data.eventtype -eq "BROKER_USERLOGGEDIN"} |  
     select @{name="Event";expression={$_.data.eventtype}}, @{name="Day";Expression={$_.data.time.day}}, @{name="User";expression={$_.namesdata.userdisplayname}} -Unique | 
         group-object day | 
