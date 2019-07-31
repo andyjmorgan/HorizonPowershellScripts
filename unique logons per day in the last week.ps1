@@ -5,7 +5,9 @@ import-module vmware.powercli
 function Get-EventSummaryView{
     param(
         [parameter(mandatory=$true)]
-        $hvServer
+        $hvServer,
+        [parameter(mandatory=$false)]
+        $days = 7
     )
     $Results=@()
     $query_service_helper = New-Object VMware.Hv.QueryServiceService
@@ -28,7 +30,7 @@ function Get-EventSummaryView{
     $date=Get-Date -Hour 0 -Minute 00 -Second 00
 
     $DateFilter = new-object VMware.Hv.QueryFilterBetween
-    $DateFilter.FromValue = $date.AddDays(-7)
+    $DateFilter.FromValue = $date.AddDays(- $days)
     $DateFilter.ToValue = $date
     $datefilter.MemberName= 'data.time'
     $Andfilter.Filters+=$DateFilter
@@ -76,9 +78,12 @@ function Get-ViewAPIService {
   return $null
 }
 
-
+$serveraddress = "pod1hcon1.lab.local"
 $creds = Get-Credential
-$serverAddress = "pod1hcon1.lab.local" # Connection Server address
+$serverAddress = $serverAddress # Connection Server address
 $hvServer = Connect-HVServer -Server $serverAddress -Credential $creds
-$logevents = Get-EventSummaryView $hvserver
-$CSList = $logevents | select data -ExpandProperty data | select node | group-object node | select name
+$logevents = Get-EventSummaryView $hvserver -days 30
+$logevents | ?{$_.data.eventtype -eq "BROKER_USERLOGGEDIN"} |  
+    select @{name="Event";expression={$_.data.eventtype}}, @{name="Day";Expression={$_.data.time.day}}, @{name="User";expression={$_.namesdata.userdisplayname}} -Unique | 
+        group-object day | 
+            select @{name="DayOfMonth"; expression = {$_.name}},@{name="UniqueUserLogons";expression={$_.count}}

@@ -101,7 +101,7 @@ Function New-InstantClone {
 
 ######Set Variables Here#####
 $NewVMName = "icClone_2"
-$sourceVMName = "hv10x642"
+$sourceVMName = "10x64p1-1"
 $destinationNetwork = "DMZ Network"
 $vcenterAddress = "vcsa.lab.local"
 #############################
@@ -139,6 +139,10 @@ foreach($disk in $removeList){
 #sets the network adapter to secure network and connects the network
 Get-NetworkAdapter -vm $newVMName | Set-NetworkAdapter -Portgroup $DestinationNetwork -Confirm:$false
 Get-NetworkAdapter -vm $newVMName | Set-NetworkAdapter -StartConnected $true -Connected $true -Confirm:$false
+
+get-vm $newVMname | open-vmconsolewindow
+
+start-sleep 15
 
 #closes the connection to vcenter
 Disconnect-VIServer -force -Confirm:$false -ErrorAction SilentlyContinue
