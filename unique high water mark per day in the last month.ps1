@@ -1,4 +1,5 @@
 ﻿# this script demo's how to get a unique user logon count per day from the eventdb
+# Andrew Morgan EUC OCTO
 
 import-module vmware.powercli
 
@@ -36,7 +37,7 @@ function Get-EventSummaryView{
     $Andfilter.Filters+=$DateFilter
     $andfilter.Filters+=$OrFilter
     $query.Filter = $AndFilter
-    
+    $query.MaxPageSize = 50
     $queryResponse = $query_service_helper.QueryService_Create($services, $query)
 
     $results+=$queryResponse.Results
@@ -84,33 +85,29 @@ $creds = Get-Credential -Message "Please enter valid credentials to connect to t
 foreach($server in $serveraddress){
     Write-host "Connecting to $server"
     $hvServer = Connect-HVServer -Server $server -Credential $creds
-    $events = Get-EventSummaryView $hvserver -days 30
+    $events = Get-EventSummaryView $hvserver -days 7
     Write-host "Retrieved $($events.count) events"
     $logevents += $events
     Disconnect-HVServer -Server $hvServer -Confirm:$false
 }
 
-
-$uniqueCountPerDay = $logevents | ?{$_.data.eventtype -eq "BROKER_USERLOGGEDIN"} |  
-    select @{name="Event";expression={$_.data.eventtype}}, @{name="Day";Expression={$_.data.time.day}}, @{name="User";expression={$_.namesdata.userdisplayname}} -Unique | 
-        group-object day | 
-            select @{name="DayOfMonth"; expression = {$_.name}},@{name="UniqueUserLogons";expression={$_.count}}
-
-
-$dayCountBreakdown = $logevents | select @{name="Event";expression={$_.data.eventtype}}, @{name="Day";Expression={$_.data.time.day}}, @{name="User";expression={$_.namesdata.userdisplayname}} | Group-Object day
+$timedobjects = $logevents | select @{name="Event";expression={$_.data.eventtype}}, @{name="Date";Expression={$_.data.time}}, @{name="User";expression={$_.namesdata.userdisplayname}}
+$dayCountBreakdown = $timedobjects | select event, @{name="Day";Expression={$_.date.day}},user | Group-Object day
 
 $UniqueHighWaterMarkReport=@()
 
 foreach($day in $dayCountBreakdown){
     $daynumber = $day.name
     $highwaterMark = 0
+    $logonsperday = 0
     [System.Collections.ArrayList]$loggedonUsers= New-Object -TypeName "System.Collections.ArrayList"
 
 
     foreach($item in $day.group){
     if($item.event -eq "BROKER_USERLOGGEDIN"){
+        $logonsperday+=1
         if(!$loggedonUsers.Contains($item.User)){
-            $loggedonUsers.Add($item.user)
+            $loggedonUsers.Add($item.user) | Out-Null
             if($loggedonusers.Count -gt $highwaterMark){
                 $highwaterMark = $loggedonusers.Count
             }
@@ -123,7 +120,11 @@ foreach($day in $dayCountBreakdown){
     }
     }
     $uniquehighwatermarkreport+=new-object psobject -property @{
-        day=$daynumber;
-        highwatermark=$highwatermark;
+        Day=$daynumber;
+        HighWaterMark=$highwatermark;
+        logonsPerDay=$logonsperday
     }
 }
+
+$UniqueHighWaterMarkReport
+
