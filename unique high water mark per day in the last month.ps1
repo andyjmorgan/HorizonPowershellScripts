@@ -37,7 +37,6 @@ function Get-EventSummaryView{
     $Andfilter.Filters+=$DateFilter
     $andfilter.Filters+=$OrFilter
     $query.Filter = $AndFilter
-    $query.MaxPageSize = 50
     $queryResponse = $query_service_helper.QueryService_Create($services, $query)
 
     $results+=$queryResponse.Results
