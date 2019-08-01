@@ -90,7 +90,7 @@ foreach($server in $serveraddress){
     Disconnect-HVServer -Server $hvServer -Confirm:$false
 }
 
-$timedobjects = $logevents | select @{name="Event";expression={$_.data.eventtype}}, @{name="Date";Expression={$_.data.time}}, @{name="User";expression={$_.namesdata.userdisplayname}}
+$timedobjects = $logevents | select @{name="Event";expression={$_.data.eventtype}}, @{name="Date";Expression={$_.data.time}}, @{name="User";expression={$_.namesdata.userdisplayname}} | sort date
 $dayCountBreakdown = $timedobjects | select event, @{name="Day";Expression={$_.date.day}},user | Group-Object day
 
 $UniqueHighWaterMarkReport=@()
