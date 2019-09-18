@@ -109,7 +109,7 @@ function Get-HRSAMLAuthenticators(){
 }
 
 
-$url = "https://pod1hcon2.lab.local"
+$url = ""
 
 if($accessToken = Open-HRConnection -username (read-host -Prompt "username") -password (read-host -Prompt "password") -domain (read-host -Prompt "domain") -url $url){
     Get-HRConnectionServers -accessToken $accessToken -url $url
