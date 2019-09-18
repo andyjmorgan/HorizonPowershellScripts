@@ -80,50 +80,103 @@ function Get-ViewAPIService {
 
 $logevents = @()
 $serveraddress = @("pod1hcon1.lab.local","pod2hcon1.lab.local")
-$creds = Get-Credential -Message "Please enter valid credentials to connect to the Horizon Connection servers"
+#$creds = Get-Credential -Message "Please enter valid credentials to connect to the Horizon Connection servers"
 foreach($server in $serveraddress){
     Write-host "Connecting to $server"
     $hvServer = Connect-HVServer -Server $server -Credential $creds
-    $events = Get-EventSummaryView $hvserver -days 7
+    $events = Get-EventSummaryView $hvserver -days 100
     Write-host "Retrieved $($events.count) events"
     $logevents += $events
     Disconnect-HVServer -Server $hvServer -Confirm:$false
 }
 
-$timedobjects = $logevents | select @{name="Event";expression={$_.data.eventtype}}, @{name="Date";Expression={$_.data.time}}, @{name="User";expression={$_.namesdata.userdisplayname}} | sort date
-$dayCountBreakdown = $timedobjects | select event, @{name="Day";Expression={$_.date.day}},user | Group-Object day
+$timedobjects = $logevents | select @{name="Event";expression={$_.data.eventtype}}, @{name="Date";Expression={$_.data.time}}, @{name="User";expression={$_.namesdata.userdisplayname}}, @{name="SID";expression={$_.namesdata.UserSid}} | sort date
+$dayCountBreakdown = $timedobjects | select event, @{name="Day";Expression={$_.date.dayofyear}},user | Group-Object day
 
 $UniqueHighWaterMarkReport=@()
+[System.Collections.ArrayList]$spilloverlist= New-Object -TypeName "System.Collections.ArrayList"
 
 foreach($day in $dayCountBreakdown){
     $daynumber = $day.name
     $highwaterMark = 0
+   
     $logonsperday = 0
+    $logoffsperday = 0
+    $carriedForward=0
+
+    $duplicateSessions = 0
+    $missingsessions = 0
+
     [System.Collections.ArrayList]$loggedonUsers= New-Object -TypeName "System.Collections.ArrayList"
 
+    if($spilloverlist.Count > 0){
+        write-warning "Carrying over $($spilloverlist.count)"
+        $carriedForward = $spilloverlist.Count
+        $loggedonUsers = $spilloverlist
+    }
 
     foreach($item in $day.group){
-    if($item.event -eq "BROKER_USERLOGGEDIN"){
-        $logonsperday+=1
-        if(!$loggedonUsers.Contains($item.User)){
-            $loggedonUsers.Add($item.user) | Out-Null
+        if($item.event -eq "BROKER_USERLOGGEDIN"){
+            $logonsperday+=1;
+            $userSession = @($loggedonUsers | ? {$_.user -eq $item.User})
+            if($userSession.Count -gt 1){
+                write-warning "Found More than one user session"
+            }
+            if($userSession.count -eq 0){
+                $newUser = new-object psobject -property @{
+                    User = $item.User;
+                    activeSessions = 1;
+                }
+                $loggedonUsers.Add($newUser) | out-null
+            }
+            if($userSession.count -eq 1){
+                #write-warning "incrementing session count"
+
+                $userSession[0].activeSessions +=1
+            }
             if($loggedonusers.Count -gt $highwaterMark){
-                $highwaterMark = $loggedonusers.Count
+                    $highwaterMark = $loggedonusers.Count
             }
         }
+        
+        else{
+            $logoffsperday+=1;
+            $userSession = @($loggedonUsers | ? {$_.user -eq $item.User})
+            if($userSession.Count -gt 1){
+                write-warning "Found More than one user session"
+            }
+            if($userSession.count -eq 0){
+                #write-warning "incrementing missing count"
+               $missingsessions +=1
+            }
+            if($userSession.count -eq 1){
+                $userSession[0].activeSessions -=1
+                if($userSession[0].activeSessions -le 0)
+                {
+                    #write-warning "removing user session"
+                    $loggedonUsers.Remove($userSession[0]) 
+                }
+                else{
+                    #write-warning "decreasing user session count"
+                }
+            } 
+        }
+    
     }
-    else{
-        if($loggedonUsers.Contains($item.User)){
-            $loggedonUsers.Remove($item.user)
-        }           
+
+    if($loggedonUsers.count -gt 0){
+        Write-Warning "Carrying over $($loggedonUsers.Count) to next day"
+        $spilloverlist = $loggedonUsers
     }
-    }
+
     $uniquehighwatermarkreport+=new-object psobject -property @{
-        Day=$daynumber;
+        Date=(get-date -day 1 -month 1).AddDays($day.name -1).ToShortDateString();
         HighWaterMark=$highwatermark;
-        logonsPerDay=$logonsperday
+        logons=$logonsperday;
+        logoffs=$logoffsperday;
+        carryover= $spilloverlist.Count
     }
 }
 
-$UniqueHighWaterMarkReport
-
+$UniqueHighWaterMarkReport | out-file "$env:USERPROFILE\uniquehighwatermarkreport.txt"
+$logevents | out-file "$env:USERPROFILE\logevents.txt"
