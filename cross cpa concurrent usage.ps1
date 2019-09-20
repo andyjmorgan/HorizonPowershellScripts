@@ -93,11 +93,11 @@ Write-Verbose "Received $($localsessions.count) sessions from local pod"
 $sessionList += convert-SessionsToReportObject -SessionList $localsessions -podName $localPod.DisplayName -siteName $localSite.base.displayname
 
 #Perform task on Remote Pods
-
 foreach($pod in $pods | ? {!$_.localPod}){
     
     $localSite = $sites | ?{$_.id.id -eq $pod.site.Id}[0]
     $hasData=$false
+    
     foreach($endpoint in $pod.endpoints){        
         $endpointDetails = $hvserver.ExtensionData.PodEndpoint.PodEndpoint_Get($endpoint);
         $connectionURI = [System.Uri] $endpointDetails.serverAddress
@@ -126,31 +126,6 @@ foreach($pod in $pods | ? {!$_.localPod}){
 Disconnect-HVServer -Server $serveraddress -Force -Confirm:$false -ea SilentlyContinue
 
 Write-Verbose "Received a total of $($sessionList.count) sessions across the CPA"
-
-#parse data
-foreach($session in $sessiondata){
-    $hostingResource=""
-    if($session.NamesData.BaseNames.DesktopName.Length -gt 0){
-        $hostingResource = $session.NamesData.DesktopName
-    }
-    elseif($session.NamesData.BaseNames.FarmName.length -gt 0){
-        $hostingResource = $session.NamesData.FarmName
-    }
-    $SessionObject = New-Object PSObject -Property @{
-        username         = $session.NamesData.UserName
-        domain           = $session.Namesdata.username.split('\')[0]
-        machineName      = $session.NamesData.MachineOrRDSServerName
-        clientName       = $session.NamesData.ClientName
-        SessionType      = $session.SessionData.SessionType
-        SessionState     = $session.SessionData.SessionState
-        StartTime        = $session.SessionData.StartTime
-        DisconnectTime   = $session.SessionData.DisconnectTime
-        HostingResource  = $hostingResource
-    }
-    $sessionList+=$SessionObject
-}
-
-$podReport = $sessionlist | group-object -
 
 $podReport=@()
     $sessionList | group-object podname | %{
@@ -182,14 +157,14 @@ $domainReport=@()
 
 
 $report = New-Object PSObject -Property @{
-        timeStamp                 = $time
-        totalUniqueCCU            = @($Sessionlist | group-object username).Count
-        totalUniqueCCUApplication = @($Sessionlist | ?{$_.sessionType -eq "APPLICATION"} | group-object username).Count
-        totalUniqueCCUbyClient    = @($Sessionlist | group-object username, clientname).Count
-        totalSessions             = $sessionList.Count
+        TimeStamp                 = $time
+        TotalUniqueCCU            = @($Sessionlist | group-object username).Count
+        TotalUniqueCCUApplication = @($Sessionlist | ?{$_.sessionType -eq "APPLICATION"} | group-object username).Count
+        TotalUniqueCCUbyClient    = @($Sessionlist | group-object username, clientname).Count
+        TotalSessions             = $sessionList.Count
         PodCounts                 = $podReport
-        siteCounts                = $siteReport
-        domainCounts              = $domainReport
+        SiteCounts                = $siteReport
+        DomainCounts              = $domainReport
 }
 $report
 
