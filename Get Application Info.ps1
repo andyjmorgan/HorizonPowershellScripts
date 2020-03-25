@@ -1,4 +1,4 @@
-﻿# this script demo's how to copy an application in a horizon pod
+﻿# this script demo's how to pull application info and detail
 
 import-module vmware.powercli
 
