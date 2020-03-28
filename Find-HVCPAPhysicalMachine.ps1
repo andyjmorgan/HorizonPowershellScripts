@@ -150,5 +150,6 @@ If($hvserver){
 else{
     write-warning "Could not connect to connection server $connectionServerName"
 }
+Disconnect-HVServer $connectionServerName -Force -Confirm:$false -ea:SilentlyContinue
 
 
