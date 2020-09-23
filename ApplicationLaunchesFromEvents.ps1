@@ -72,4 +72,4 @@ $creds = Get-Credential
 $serverAddress = "pod1hcon1.lab.local" # Connection Server address
 $hvServer = Connect-HVServer -Server $serverAddress -Credential $creds
 $logevents = Get-EventSummaryView $hvserver
-$logevents | select-object @{Name="User"; Expression={$_.namesdata.userdisplayname}},@{Name="AppName"; Expression={$_.namesdata.applicationName}}
+$logevents | select-object @{Name="Time"; Expression={$_.data.time}} ,@{Name="User"; Expression={$_.namesdata.userdisplayname}},@{Name="AppName"; Expression={$_.namesdata.applicationName}}
