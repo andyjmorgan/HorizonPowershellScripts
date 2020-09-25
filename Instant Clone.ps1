@@ -100,9 +100,9 @@ Function New-InstantClone {
 }
 
 ######Set Variables Here#####
-$NewVMName = "icClone_2"
-$sourceVMName = "10x64p1-1"
-$destinationNetwork = "DMZ Network"
+$NewVMName = "capturevm"
+$sourceVMName = "10x64floating3"
+$destinationNetwork = "Avi Internal"
 $vcenterAddress = "vcsa.lab.local"
 #############################
 

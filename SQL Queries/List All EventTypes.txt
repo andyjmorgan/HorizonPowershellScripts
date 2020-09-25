@@ -1,0 +1,4 @@
+select event.EventType
+FROM [HorizonPod1Events].[dbo].[event]
+group by event.EventType
+order by event.EventType
